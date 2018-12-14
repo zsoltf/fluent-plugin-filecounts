@@ -45,6 +45,7 @@ module Fluent
 
         begin
 
+          event_time = Time.now.strftime('%FT%T%:z')
           time_started = Engine.now
           command = "bash -c '\\find #@path -name \".*\" -prune -o -print'"
           files = IO.popen(command)
@@ -57,11 +58,11 @@ module Fluent
 
         es = MultiEventStream.new
 
-        es.add(Engine.now, { "command" => command, "time_to_run" => (time_finished.to_i - time_started.to_i) })
+        es.add(Engine.now, { "time" => event_time, "command" => command, "time_to_run" => (time_finished.to_i - time_started.to_i) })
         groups = files.group_by {|e| File.dirname(e) }
         counts = Hash[groups.map{|k,v| [k, v.count]}]
         time = Engine.now
-        counts.each {|k,v| es.add(time, Hash[ 'path', k, 'count', v ]) }
+        counts.each {|k,v| es.add(time, Hash[ 'time', event_time, 'path', k, 'count', v ]) }
 
         router.emit_stream(tag, es)
 
